@@ -1,6 +1,6 @@
 use crate::model::User;
 use crate::routes::*;
-use actix_web::{web, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
 use mongodb::{bson::doc, options::IndexOptions, Client, IndexModel};
 use std::env;
@@ -28,6 +28,7 @@ impl<'a> Server<'a> {
     }
     pub async fn run(&self) -> std::io::Result<()> {
         dotenv().ok();
+        env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
         let uri = env::var("URI").expect("You need to set URI.");
         let client = Client::with_uri_str(uri).await.expect("Failed to connect.");
 
@@ -35,11 +36,13 @@ impl<'a> Server<'a> {
 
         HttpServer::new(move || {
             App::new()
+                .wrap(Logger::new(r#"%a "%r" %s %T"#))
                 .app_data(web::Data::new(client.clone()))
                 .service(healthcheck)
                 .service(get_todos)
                 .service(post_todo)
                 .service(register)
+                .service(login)
         })
         .bind(self.addr)?
         .run()

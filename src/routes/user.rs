@@ -7,7 +7,7 @@ use actix_web::{
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
+    Argon2, PasswordHash, PasswordVerifier,
 };
 use jsonwebtoken::{encode, EncodingKey, Header};
 use mongodb::{bson::doc, Client, Collection};
@@ -17,46 +17,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-fn hash_password(password: String) -> Option<String> {
-    let salt = SaltString::generate(&mut OsRng);
-
-    let argon2 = Argon2::default();
-    match argon2.hash_password(password.as_bytes(), &salt) {
-        Ok(pass) => Some(pass.to_string()),
-        Err(_) => None,
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 struct Claims {
     sub: String,
     exp: usize,
-}
-
-fn generate_jwt(user: User) -> String {
-    let secret_key = env::var("SECRET_KEY").expect("You need to set secret key");
-    let expiration_time = SystemTime::now()
-        .checked_add(std::time::Duration::from_secs(86400))
-        .expect("System time overflow");
-
-    let exp_timestamp = expiration_time
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as usize;
-
-    let claims = Claims {
-        sub: user.username.clone(),
-        exp: exp_timestamp,
-    };
-
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret_key.as_bytes()),
-    )
-    .expect("Cannot encode claims.");
-
-    token
 }
 
 #[post("/register")]
@@ -95,5 +59,76 @@ pub async fn register(client: web::Data<Client>, user: web::Form<NewUser>) -> Ht
                 _ => HttpResponse::InternalServerError().body(err.to_string()),
             }
         }
+    }
+}
+
+#[post("/login")]
+pub async fn login(client: web::Data<Client>, user: web::Form<NewUser>) -> HttpResponse {
+    let collection: Collection<User> = client.database("todo").collection("users");
+    let password = user.password.clone();
+    match collection
+        .find_one(doc! { "username": user.username.clone() }, None)
+        .await
+    {
+        Ok(user) => {
+            let password_to_hash = user.clone().unwrap().password;
+            let pasword_hash = PasswordHash::new(&password_to_hash).unwrap();
+
+            match Argon2::default()
+                .verify_password(password.as_bytes(), &pasword_hash)
+                .is_ok()
+            {
+                true => {
+                    let token = generate_jwt(user.unwrap());
+                    HttpResponse::Ok()
+                        .cookie(
+                            Cookie::build("JWT", token)
+                                .max_age(time::Duration::seconds(86400))
+                                .http_only(true)
+                                .secure(true)
+                                .finish(),
+                        )
+                        .finish()
+                }
+                false => HttpResponse::Unauthorized().finish(),
+            }
+        }
+        Err(_) => HttpResponse::NotFound().finish(),
+    }
+}
+
+fn generate_jwt(user: User) -> String {
+    let secret_key = env::var("SECRET_KEY").expect("You need to set secret key");
+    let expiration_time = SystemTime::now()
+        .checked_add(std::time::Duration::from_secs(86400))
+        .expect("System time overflow");
+
+    let exp_timestamp = expiration_time
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as usize;
+
+    let claims = Claims {
+        sub: user.username.clone(),
+        exp: exp_timestamp,
+    };
+
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret_key.as_bytes()),
+    )
+    .expect("Cannot encode claims.");
+
+    token
+}
+
+fn hash_password(password: String) -> Option<String> {
+    let salt = SaltString::generate(&mut OsRng);
+
+    let argon2 = Argon2::default();
+    match argon2.hash_password(password.as_bytes(), &salt) {
+        Ok(pass) => Some(pass.to_string()),
+        Err(_) => None,
     }
 }
