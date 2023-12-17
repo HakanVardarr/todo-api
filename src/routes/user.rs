@@ -1,90 +1,21 @@
-use crate::model::{NewTodo, NewUser, User, UserWithId};
+use crate::model::{NewUser, User};
 use actix_web::{
     cookie::Cookie,
-    get, post,
+    post,
     web::{self},
-    HttpRequest, HttpResponse,
+    HttpResponse,
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use mongodb::{bson::doc, options::FindOneAndUpdateOptions, Client, Collection};
+use jsonwebtoken::{encode, EncodingKey, Header};
+use mongodb::{bson::doc, Client, Collection};
 use serde::{Deserialize, Serialize};
 use std::{
     env,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-#[get("/todos")]
-pub async fn get_todos(client: web::Data<Client>, req: HttpRequest) -> HttpResponse {
-    let secret_key = env::var("SECRET_KEY").expect("You need to set secret key");
-    if let Some(cookie) = req.cookie("JWT") {
-        let token = cookie.value();
-        let decoded_token_claims = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(secret_key.as_bytes()),
-            &Validation::default(),
-        )
-        .unwrap();
-
-        let username = decoded_token_claims.claims.sub;
-        let collection: Collection<UserWithId> = client.database("todo").collection("users");
-
-        match collection
-            .find_one(doc! { "username": &username }, None)
-            .await
-        {
-            Ok(Some(user)) => HttpResponse::Ok().json(user.todos),
-            Ok(None) => {
-                HttpResponse::NotFound().body(format!("No user found with username {username}"))
-            }
-            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-        }
-    } else {
-        HttpResponse::Unauthorized().finish()
-    }
-}
-
-#[post("/todos")]
-pub async fn post_todo(
-    client: web::Data<Client>,
-    req: HttpRequest,
-    new_todo: web::Form<NewTodo>,
-) -> HttpResponse {
-    let secret_key = env::var("SECRET_KEY").expect("You need to set secret key");
-    if let Some(cookie) = req.cookie("JWT") {
-        let token = cookie.value();
-        let decoded_token_claims = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(secret_key.as_bytes()),
-            &Validation::default(),
-        )
-        .unwrap();
-
-        let username = decoded_token_claims.claims.sub;
-        let collection: Collection<UserWithId> = client.database("todo").collection("users");
-        let update = doc! { "$push": { "todos": new_todo.content.clone() } };
-
-        let options = FindOneAndUpdateOptions::builder()
-            .return_document(mongodb::options::ReturnDocument::After)
-            .build();
-
-        match collection
-            .find_one_and_update(doc! { "username": &username }, update, options)
-            .await
-        {
-            Ok(Some(user)) => HttpResponse::Ok().json(user.todos),
-            Ok(None) => {
-                HttpResponse::NotFound().body(format!("No user found with username {username}"))
-            }
-            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-        }
-    } else {
-        HttpResponse::Unauthorized().finish()
-    }
-}
 
 fn hash_password(password: String) -> Option<String> {
     let salt = SaltString::generate(&mut OsRng);
