@@ -37,7 +37,9 @@ impl<'a> Server<'a> {
             App::new()
                 .app_data(web::Data::new(client.clone()))
                 .service(healthcheck)
-                .service(get_user)
+                .service(get_todos)
+                .service(post_todo)
+                .service(register)
         })
         .bind(self.addr)?
         .run()
