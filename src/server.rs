@@ -30,7 +30,9 @@ impl<'a> Server<'a> {
         dotenv().ok();
         env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
         let uri = env::var("URI").expect("You need to set URI.");
-        let client = Client::with_uri_str(uri).await.expect("Failed to connect.");
+        let client = Client::with_uri_str(uri.clone())
+            .await
+            .expect("Failed to connect.");
 
         Server::create_username_index(&client).await;
 
@@ -38,9 +40,11 @@ impl<'a> Server<'a> {
             App::new()
                 .wrap(Logger::new(r#"%a "%r" %s %T"#))
                 .app_data(web::Data::new(client.clone()))
+                .service(index)
                 .service(healthcheck)
                 .service(get_todos)
                 .service(post_todo)
+                .service(delete_todo)
                 .service(register)
                 .service(login)
         })

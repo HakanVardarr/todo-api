@@ -1,6 +1,6 @@
 use crate::model::{NewTodo, UserWithId};
 use actix_web::{
-    get, post,
+    delete, get, post,
     web::{self},
     HttpRequest, HttpResponse,
 };
@@ -55,6 +55,37 @@ pub async fn post_todo(
                 HttpResponse::InternalServerError().body(err)
             }
             Err(UserError::Unauthorized) => HttpResponse::Unauthorized().finish(),
+        }
+    } else {
+        HttpResponse::Unauthorized().finish()
+    }
+}
+
+#[delete("/todos/{index}")]
+pub async fn delete_todo(
+    client: web::Data<Client>,
+    req: HttpRequest,
+    index: web::Path<isize>,
+) -> HttpResponse {
+    if let Ok(username) = get_username_from_jwt(&req) {
+        match find_user_by_username(&client, username.as_str()).await {
+            Ok(Some(user)) => {
+                let mut todos = user.todos;
+                let index = index.into_inner();
+                if index >= 0 && (index as usize) < todos.len() {
+                    todos.remove(index as usize);
+                    match replace_user_todos(&client, username.as_str(), &todos).await {
+                        Ok(_) => HttpResponse::Ok().json(todos),
+                        Err(_) => HttpResponse::InternalServerError().finish(),
+                    }
+                } else {
+                    HttpResponse::BadRequest().finish()
+                }
+            }
+            Ok(None) => HttpResponse::NotFound().finish(),
+            Err(err) => {
+                HttpResponse::InternalServerError().body(format!("Error retrieving user: {}", err))
+            }
         }
     } else {
         HttpResponse::Unauthorized().finish()
@@ -128,4 +159,25 @@ fn get_username_from_jwt(req: &HttpRequest) -> Result<String, UserError> {
 fn get_decoding_key() -> DecodingKey {
     let secret_key = env::var("SECRET_KEY").expect("You need to set secret key");
     DecodingKey::from_secret(secret_key.as_bytes())
+}
+
+async fn replace_user_todos(
+    client: &web::Data<Client>,
+    username: &str,
+    new_todos: &Vec<String>,
+) -> Result<UserWithId, UserError> {
+    let collection: Collection<UserWithId> = client.database("todo").collection("users");
+    let update = doc! { "$set": { "todos": new_todos } };
+    let options = FindOneAndUpdateOptions::builder()
+        .return_document(mongodb::options::ReturnDocument::After)
+        .build();
+
+    match collection
+        .find_one_and_update(doc! { "username": username }, update, options)
+        .await
+    {
+        Ok(Some(user)) => Ok(user),
+        Ok(None) => Err(UserError::NotFound),
+        Err(err) => Err(UserError::InternalServerError(err.to_string())),
+    }
 }
