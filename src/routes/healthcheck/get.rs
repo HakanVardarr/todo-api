@@ -1,4 +1,4 @@
-use actix_web::{get, HttpResponse};
+use super::*;
 
 #[get("/healthcheck")]
 pub async fn healthcheck() -> HttpResponse {

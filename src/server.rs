@@ -1,6 +1,6 @@
 use crate::model::User;
 use crate::routes::*;
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{middleware::Logger, services, web, App, HttpServer};
 use dotenv::dotenv;
 use mongodb::{bson::doc, options::IndexOptions, Client, IndexModel};
 use std::env;
@@ -40,13 +40,14 @@ impl<'a> Server<'a> {
             App::new()
                 .wrap(Logger::new(r#"%a "%r" %s %T"#))
                 .app_data(web::Data::new(client.clone()))
-                .service(index)
-                .service(healthcheck)
-                .service(get_todos)
-                .service(post_todo)
-                .service(delete_todo)
-                .service(register)
-                .service(login)
+                .service(services![
+                    healthcheck,
+                    get_todos,
+                    post_todo,
+                    delete_todo,
+                    register,
+                    login
+                ])
         })
         .bind(self.addr)?
         .run()
