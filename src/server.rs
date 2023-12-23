@@ -44,6 +44,7 @@ impl<'a> Server<'a> {
                     Cors::default()
                         .allow_any_origin()
                         .allow_any_method()
+                        .allow_any_header()
                         .expose_any_header()
                         .max_age(3600),
                 )

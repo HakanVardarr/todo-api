@@ -18,10 +18,6 @@ pub async fn register(client: web::Data<Client>, user: web::Json<NewUser>) -> Ht
         Ok(_) => {
             let token = generate_jwt(new_user);
             HttpResponse::Ok()
-                .append_header((
-                    "Access-Control-Allow-Origin",
-                    "https://todoapph.netlify.app",
-                ))
                 .append_header(("Authorization", format!("Bearer: {token}")))
                 .finish()
         }

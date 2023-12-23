@@ -8,12 +8,7 @@ pub async fn post_todo(
 ) -> HttpResponse {
     if let Ok(username) = get_username_from_jwt(&req) {
         match update_user_todos(&client, &username, &new_todo.content).await {
-            Ok(user) => HttpResponse::Ok()
-                .append_header((
-                    "Access-Control-Allow-Origin",
-                    "https://todoapph.netlify.app",
-                ))
-                .json(user.todos),
+            Ok(user) => HttpResponse::Ok().json(user.todos),
             Err(Error::NotFound) => {
                 HttpResponse::NotFound().body(format!("No user found with username {}", username))
             }

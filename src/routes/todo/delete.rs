@@ -14,12 +14,7 @@ pub async fn delete_todo(
                 if index >= 0 && (index as usize) < todos.len() {
                     todos.remove(index as usize);
                     match replace_user_todos(&client, username.as_str(), &todos).await {
-                        Ok(_) => HttpResponse::Ok()
-                            .append_header((
-                                "Access-Control-Allow-Origin",
-                                "https://todoapph.netlify.app",
-                            ))
-                            .json(todos),
+                        Ok(_) => HttpResponse::Ok().json(todos),
                         Err(_) => HttpResponse::InternalServerError().finish(),
                     }
                 } else {

@@ -1,6 +1,5 @@
 use crate::model::{NewUser, User};
 use actix_web::{
-    cookie::Cookie,
     post,
     web::{self},
     HttpResponse,
