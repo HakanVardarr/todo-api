@@ -46,7 +46,7 @@ impl<'a> Server<'a> {
                         .allowed_origin("https://todoapph.netlify.app/login")
                         .allowed_origin("https://todoapph.netlify.app")
                         .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-                        .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
+                        .expose_any_header()
                         .max_age(3600),
                 )
                 .wrap(Logger::new(r#"%a "%r" %s %T"#))
