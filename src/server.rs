@@ -42,7 +42,7 @@ impl<'a> Server<'a> {
             App::new()
                 .wrap(
                     Cors::default()
-                        .allow_any_origin()
+                        .allowed_origin("https://todoapph.netlify.app")
                         .allow_any_method()
                         .allow_any_header()
                         .expose_any_header()
