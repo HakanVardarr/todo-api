@@ -6,8 +6,21 @@ pub struct Claims {
     exp: usize,
 }
 
-pub fn get_jwt_from_cookie(req: &HttpRequest) -> Option<String> {
-    req.cookie("JWT").map(|cookie| cookie.value().to_string())
+pub fn get_jwt_from_header(req: &HttpRequest) -> Option<String> {
+    if let Some(token) = req
+        .headers()
+        .get("Authorization")
+        .and_then(|auth_header| auth_header.to_str().ok())
+    {
+        let token = token
+            .split(":")
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+
+        return Some(token[1].clone().trim().to_string());
+    }
+
+    None
 }
 
 pub fn decode_token_and_get_username(token: &str) -> Result<String, String> {
