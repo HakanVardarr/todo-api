@@ -40,6 +40,13 @@ impl<'a> Server<'a> {
 
         HttpServer::new(move || {
             App::new()
+                .wrap(
+                    Cors::default()
+                        .allowed_origin("https://todoapph.netlify.app/")
+                        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+                        .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
+                        .max_age(3600),
+                )
                 .wrap(Logger::new(r#"%a "%r" %s %T"#))
                 .app_data(web::Data::new(client.clone()))
                 .service(services![
