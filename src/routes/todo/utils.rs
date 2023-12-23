@@ -64,9 +64,21 @@ pub async fn update_user_todos(
 
 pub fn get_username_from_jwt(req: &HttpRequest) -> Result<String, Error> {
     if let Some(username) = req
-        .cookie("JWT")
-        .and_then(|cookie| {
-            decode::<Claims>(cookie.value(), &get_decoding_key(), &Validation::default()).ok()
+        .headers()
+        .get("Authorization")
+        .and_then(|token| {
+            let token = token.to_str().unwrap().to_string();
+            let token = token
+                .split(":")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+
+            decode::<Claims>(
+                &token[1].trim(),
+                &get_decoding_key(),
+                &Validation::default(),
+            )
+            .ok()
         })
         .map(|decoded_token| decoded_token.claims.sub)
     {

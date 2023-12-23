@@ -4,7 +4,7 @@ use super::*;
 pub async fn post_todo(
     client: web::Data<Client>,
     req: HttpRequest,
-    new_todo: web::Form<NewTodo>,
+    new_todo: web::Json<NewTodo>,
 ) -> HttpResponse {
     if let Ok(username) = get_username_from_jwt(&req) {
         match update_user_todos(&client, &username, &new_todo.content).await {

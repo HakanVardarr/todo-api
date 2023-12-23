@@ -1,7 +1,7 @@
 use super::*;
 
 #[post("/register")]
-pub async fn register(client: web::Data<Client>, user: web::Form<NewUser>) -> HttpResponse {
+pub async fn register(client: web::Data<Client>, user: web::Json<NewUser>) -> HttpResponse {
     let collection: Collection<User> = client.database("todo").collection("users");
     let password = hash_password(&user.password);
 
@@ -18,13 +18,7 @@ pub async fn register(client: web::Data<Client>, user: web::Form<NewUser>) -> Ht
         Ok(_) => {
             let token = generate_jwt(new_user);
             HttpResponse::Ok()
-                .cookie(
-                    Cookie::build("JWT", token)
-                        .max_age(time::Duration::seconds(86400))
-                        .http_only(true)
-                        .secure(true)
-                        .finish(),
-                )
+                .append_header(("Authorization", format!("Bearer: {token}")))
                 .finish()
         }
         Err(err) => {
@@ -40,7 +34,7 @@ pub async fn register(client: web::Data<Client>, user: web::Form<NewUser>) -> Ht
 }
 
 #[post("/login")]
-pub async fn login(client: web::Data<Client>, login_user: web::Form<NewUser>) -> HttpResponse {
+pub async fn login(client: web::Data<Client>, login_user: web::Json<NewUser>) -> HttpResponse {
     let collection: Collection<User> = client.database("todo").collection("users");
     match find_user(collection, &login_user.username).await {
         Ok(user) => match verify_password(&user.password, &login_user.password) {
@@ -48,13 +42,7 @@ pub async fn login(client: web::Data<Client>, login_user: web::Form<NewUser>) ->
                 if verified {
                     let token = generate_jwt(user);
                     HttpResponse::Ok()
-                        .cookie(
-                            Cookie::build("JWT", token)
-                                .max_age(time::Duration::seconds(86400))
-                                .http_only(true)
-                                .secure(true)
-                                .finish(),
-                        )
+                        .append_header(("Authorization", format!("Bearer: {token}")))
                         .finish()
                 } else {
                     HttpResponse::Unauthorized().body("Password is wrong")
