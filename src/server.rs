@@ -42,8 +42,6 @@ impl<'a> Server<'a> {
             App::new()
                 .wrap(
                     Cors::default()
-                        .allowed_origin("https://todoapph.netlify.app/register")
-                        .allowed_origin("https://todoapph.netlify.app/login")
                         .allowed_origin("https://todoapph.netlify.app")
                         .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
                         .expose_any_header()
