@@ -42,7 +42,7 @@ impl<'a> Server<'a> {
             App::new()
                 .wrap(
                     Cors::default()
-                        .allowed_origin("https://todoapph.netlify.app/")
+                        .allowed_origin("https://todoapph.netlify.app")
                         .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
                         .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE])
                         .max_age(3600),
