@@ -43,7 +43,7 @@ impl<'a> Server<'a> {
                 .wrap(
                     Cors::default()
                         .allow_any_origin()
-                        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+                        .allow_any_method()
                         .expose_any_header()
                         .max_age(3600),
                 )
